@@ -63,7 +63,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ninja-build ccache
+          sudo apt-get install -y -qq ninja-build ccache libpng-dev zlib1g-dev
 
       - name: Phase 1 - Build host tools natively
         run: |
@@ -77,20 +77,12 @@ jobs:
             "$GITROOT/source/blender/datatoc/datatoc.c" -lm
           echo "datatoc built"
 
-          # --- datatoc_icon (optional) ---
-          PNG_INC="$LIB_DIR/Png/include/libpng-1.6.40"
-          PNG_LIB="$LIB_DIR/Png/lib/libpng16.so"
-          ZLIB_LIB="$LIB_DIR/OpenCOLLADA/lib/libzlib.so"
-          if [ -f "$PNG_LIB" ]; then
-            gcc -O2 -o "$HOST_TOOLS/datatoc_icon" \
-              -I"$PNG_INC" \
-              "$GITROOT/source/blender/datatoc/datatoc_icon.c" \
-              "$PNG_LIB" "$ZLIB_LIB" -lm 2>/dev/null && \
-              echo "datatoc_icon built" || \
-              echo "Warning: datatoc_icon build failed"
-          else
-            echo "Warning: libpng not found, datatoc_icon skipped"
-          fi
+          # --- datatoc_icon (host-native, using system libpng) ---
+          gcc -O2 -o "$HOST_TOOLS/datatoc_icon" \
+            "$GITROOT/source/blender/datatoc/datatoc_icon.c" \
+            -lpng -lz -lm && \
+            echo "datatoc_icon built" || \
+            echo "Warning: datatoc_icon build failed"
 
       - name: Phase 2 - Build and run makesdna host tool
         run: |
@@ -307,6 +299,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DLIB_DIR="${LIB_DIR}" \
             -DDATATOC_EXECUTABLE="$HOST_TOOLS/datatoc" \
+            -DDATATOC_ICON_EXECUTABLE="$HOST_TOOLS/datatoc_icon" \
             -DMAKESDNA_EXECUTABLE="$HOST_TOOLS/makesdna" \
             -DMAKESRNA_EXECUTABLE="$HOST_TOOLS/makesrna" \
             -DWITH_BLENDER=ON \
