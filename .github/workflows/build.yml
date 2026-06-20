@@ -1,0 +1,149 @@
+name: Build Blender Android ARM64
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:  # manual trigger
+
+env:
+  # Cache keys
+  NDK_VERSION: "26.1.10909125"
+  NDK_CACHE_KEY: ndk-${{ runner.os }}-26.1.10909125
+  LIBS_CACHE_KEY: libs-${{ runner.os }}-2024-01
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
+        id: ccache-restore
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-android-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-android-${{ runner.os }}-
+
+      - name: Restore precompiled libraries
+        uses: actions/cache/restore@v4
+        id: libs-restore
+        with:
+          path: ${{ github.workspace }}/../lib-android_arm64
+          key: ${{ env.LIBS_CACHE_KEY }}
+
+      - name: Download precompiled libraries
+        if: steps.libs-restore.outputs.cache-hit != 'true'
+        run: |
+          echo "Cloning precompiled Android ARM64 libraries..."
+          git clone --depth 1 https://github.com/dshawshank/lib-android_arm64.git \
+            ${{ github.workspace }}/../lib-android_arm64
+
+      - name: Save precompiled libraries cache
+        if: steps.libs-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/../lib-android_arm64
+          key: ${{ env.LIBS_CACHE_KEY }}
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: false
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build ccache
+
+      - name: Build host tools (datatoc)
+        run: |
+          mkdir -p ${{ github.workspace }}/build/host_tools
+          # Simple native compile - no external deps needed for datatoc
+          gcc -O2 -o ${{ github.workspace }}/build/host_tools/datatoc \
+            ${{ github.workspace }}/source/blender/datatoc/datatoc.c -lm
+          echo "datatoc built successfully"
+
+      - name: Configure CMake
+        run: |
+          LIB_DIR="${{ github.workspace }}/../lib-android_arm64"
+          NDK_DIR="${{ steps.setup-ndk.outputs.ndk-path }}"
+          
+          cmake -B ${{ github.workspace }}/build \
+            -G "Ninja" \
+            -DCMAKE_TOOLCHAIN_FILE="${NDK_DIR}/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLIB_DIR="${LIB_DIR}" \
+            -DDATATOC_EXECUTABLE="${{ github.workspace }}/build/host_tools/datatoc" \
+            -DWITH_BLENDER=ON \
+            -DWITH_PYTHON=ON \
+            -DWITH_INTERNATIONAL=ON \
+            -DWITH_CODEC_FFMPEG=ON \
+            -DWITH_OPENAL=ON \
+            -DWITH_SDL=OFF \
+            -DWITH_GHOST_X11=OFF \
+            -DWITH_GHOST_WAYLAND=OFF \
+            -DWITH_JACK=OFF \
+            -DWITH_PULSEAUDIO=OFF \
+            -DWITH_OPENCOLLADA=ON \
+            -DWITH_OPENSUBDIV=ON \
+            -DWITH_OPENVDB=ON \
+            -DWITH_NANOVDB=ON \
+            -DWITH_ALEMBIC=ON \
+            -DWITH_USD=OFF \
+            -DWITH_CYCLES=ON \
+            -DWITH_CYCLES_OSL=OFF \
+            -DWITH_CYCLES_EMBREE=ON \
+            -DWITH_TBB=ON \
+            -DWITH_OPENIMAGEDENOISE=ON \
+            -DWITH_FFTW3=ON \
+            -DWITH_GMP=ON \
+            -DWITH_POTRACE=ON \
+            -DWITH_LLVM=OFF \
+            -DWITH_GTESTS=OFF \
+            -DWITH_VULKAN_BACKEND=OFF \
+            -DWITH_INSTALL_PORTABLE=ON \
+            -DWITH_BUILDINFO=OFF \
+            -DWITH_COMPILER_CCACHE=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build Blender
+        run: |
+          cmake --build ${{ github.workspace }}/build -j$(nproc) 2>&1 | tee build.log
+
+      - name: List build artifacts
+        run: |
+          echo "=== Build output ==="
+          find ${{ github.workspace }}/build -name "*.so" -o -name "blender" | head -20
+          echo "=== Build size ==="
+          du -sh ${{ github.workspace }}/build/lib/ 2>/dev/null || true
+          du -sh ${{ github.workspace }}/build/bin/ 2>/dev/null || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          name: blender-android-arm64
+          path: |
+            ${{ github.workspace }}/build/lib/*.so
+            ${{ github.workspace }}/build/bin/
+          retention-days: 30
+
+      - name: Save ccache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-android-${{ runner.os }}-${{ github.sha }}
