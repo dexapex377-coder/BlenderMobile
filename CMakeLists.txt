@@ -1158,6 +1158,10 @@ if(ANDROID)
   # Pre-compiled .so libs (OIIO, COLLADA XML, GMP) reference newer Bionic symbols
   # not available in NDK r26d API 24 headers. Allow at link time; resolved at runtime.
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-shlib-undefined")
+  # Export all symbols from libblender.so so thin JNI wrapper can resolve them at runtime
+  set(CMAKE_C_VISIBILITY_PRESET default)
+  set(CMAKE_CXX_VISIBILITY_PRESET default)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN OFF)
 endif()
 
 if(WITH_CPU_SIMD)
