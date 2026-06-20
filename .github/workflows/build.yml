@@ -404,6 +404,8 @@ jobs:
           path: |
             ${{ github.workspace }}/build/lib/*.so
             ${{ github.workspace }}/build/bin/libblender.so
+            ${{ github.workspace }}/build/source/blender/makesdna/**
+            ${{ github.workspace }}/build/source/blender/makesrna/intern/**
           retention-days: 30
 
       - name: Save ccache
