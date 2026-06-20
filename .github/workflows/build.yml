@@ -78,7 +78,10 @@ jobs:
           echo "datatoc built"
 
           # --- datatoc_icon (host-native, using system libpng) ---
+          # Note: define __LITTLE_ENDIAN__ because the icon .dat files use
+          # little-endian uint32 headers (checked via #ifndef __LITTLE_ENDIAN__).
           gcc -O2 -o "$HOST_TOOLS/datatoc_icon" \
+            -D__LITTLE_ENDIAN__ \
             "$GITROOT/source/blender/datatoc/datatoc_icon.c" \
             -lpng -lz -lm && \
             echo "datatoc_icon built" || \
