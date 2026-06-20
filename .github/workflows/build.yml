@@ -192,7 +192,7 @@ jobs:
             -DWITH_BUILDINFO=OFF \
             -DWITH_BULLET=OFF \
             -DWITH_AUDASPACE=OFF \
-            -DWITH_MOD_FLUID=ON \
+            -DWITH_MOD_FLUID=OFF \
             -DWITH_FREESTYLE=OFF \
             -DWITH_IMAGE_OPENEXR=OFF \
             -DWITH_IMAGE_CINEON=OFF \
@@ -320,6 +320,7 @@ jobs:
             -DWITH_BLENDER=ON \
             -DWITH_PYTHON=ON \
             -DWITH_INTERNATIONAL=OFF \
+            -DWITH_MOD_FLUID=OFF \
             -DWITH_CODEC_FFMPEG=ON \
             -DWITH_OPENAL=ON \
             -DWITH_SDL=OFF \
