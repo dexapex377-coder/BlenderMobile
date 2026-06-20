@@ -336,7 +336,7 @@ jobs:
             -DWITH_LLVM=OFF \
             -DWITH_GTESTS=OFF \
             -DWITH_VULKAN_BACKEND=OFF \
-            -DWITH_INSTALL_PORTABLE=ON \
+            -DWITH_INSTALL_PORTABLE=OFF \
             -DWITH_BUILDINFO=OFF \
             -DWITH_COMPILER_CCACHE=ON \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
