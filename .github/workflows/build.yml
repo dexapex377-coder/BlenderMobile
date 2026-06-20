@@ -101,16 +101,16 @@ jobs:
 
           # Generate dna_includes_all.h and dna_includes_as_strings.h
           # (replicates what CMake's file(GENERATE ...) does)
-          EXTRACT_DNA='s/.*makesdna\/(DNA_[a-zA-Z0-9_]*\.h).*/\1/p'
+          # Only use SRC_DNA_INC (lines up to the closing paren at line 92)
+          DNA_HDR_LIST=$(sed -n '4,91s/.*makesdna\/\(DNA_[a-zA-Z0-9_]*\.h\).*/\1/p' \
+            "$GITROOT/source/blender/CMakeLists.txt")
           {
             echo "/* Do not edit manually, changes will be overwritten. */"
-            sed -n "$EXTRACT_DNA" "$GITROOT/source/blender/CMakeLists.txt" | \
-              while IFS= read -r hdr; do echo "#include \"$hdr\""; done
+            echo "$DNA_HDR_LIST" | while IFS= read -r hdr; do echo "#include \"$hdr\""; done
           } > "$DNA_GEN_DIR/dna_includes_all.h"
           {
             echo "/* Do not edit manually, changes will be overwritten. */"
-            sed -n "$EXTRACT_DNA" "$GITROOT/source/blender/CMakeLists.txt" | \
-              while IFS= read -r hdr; do echo "\"$hdr\","; done
+            echo "$DNA_HDR_LIST" | while IFS= read -r hdr; do echo "\"$hdr\","; done
           } > "$DNA_GEN_DIR/dna_includes_as_strings.h"
           echo "dna_includes headers generated"
 
