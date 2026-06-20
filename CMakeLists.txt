@@ -1150,6 +1150,10 @@ endif()
 #
 # This is done globally, so that all modules can use it if available, and
 # because these are used in headers used by many modules.
+if(ANDROID)
+  add_definitions(-D_LIBCPP_ENABLE_CXX17_REMOVED_FEATURES)
+endif()
+
 if(WITH_CPU_SIMD)
   if(SUPPORT_NEON_BUILD)
     # Neon
