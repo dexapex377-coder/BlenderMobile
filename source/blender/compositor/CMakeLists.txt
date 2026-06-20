@@ -612,12 +612,20 @@ if(WITH_COMPOSITOR_CPU)
 
   set(GENSRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/operations)
   set(GENSRC ${GENSRC_DIR}/COM_SMAAAreaTexture.h)
-  add_custom_command(
-    OUTPUT ${GENSRC}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${GENSRC_DIR}
-    COMMAND "$<TARGET_FILE:smaa_areatex>" ${GENSRC}
-    DEPENDS smaa_areatex
-  )
+  if(DEFINED SMAA_AREATEX_EXECUTABLE)
+    add_custom_command(
+      OUTPUT ${GENSRC}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${GENSRC_DIR}
+      COMMAND "${SMAA_AREATEX_EXECUTABLE}" ${GENSRC}
+    )
+  else()
+    add_custom_command(
+      OUTPUT ${GENSRC}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${GENSRC_DIR}
+      COMMAND "$<TARGET_FILE:smaa_areatex>" ${GENSRC}
+      DEPENDS smaa_areatex
+    )
+  endif()
   add_custom_target(smaa_areatex_header
     SOURCES ${GENSRC}
   )

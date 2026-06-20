@@ -84,6 +84,12 @@ jobs:
             echo "datatoc_icon built" || \
             echo "Warning: datatoc_icon build failed"
 
+          # --- smaa_areatex (host-native) ---
+          g++ -O2 -o "$HOST_TOOLS/smaa_areatex" \
+            "$GITROOT/extern/smaa_areatex/smaa_areatex.cpp" -lm && \
+            echo "smaa_areatex built" || \
+            echo "Warning: smaa_areatex build failed"
+
       - name: Phase 2 - Build and run makesdna host tool
         run: |
           GITROOT="${{ github.workspace }}"
@@ -300,6 +306,7 @@ jobs:
             -DLIB_DIR="${LIB_DIR}" \
             -DDATATOC_EXECUTABLE="$HOST_TOOLS/datatoc" \
             -DDATATOC_ICON_EXECUTABLE="$HOST_TOOLS/datatoc_icon" \
+            -DSMAA_AREATEX_EXECUTABLE="$HOST_TOOLS/smaa_areatex" \
             -DMAKESDNA_EXECUTABLE="$HOST_TOOLS/makesdna" \
             -DMAKESRNA_EXECUTABLE="$HOST_TOOLS/makesrna" \
             -DWITH_BLENDER=ON \
