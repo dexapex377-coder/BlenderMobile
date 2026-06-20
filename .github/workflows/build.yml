@@ -339,15 +339,26 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
+      - name: Debug cmake targets
+        run: |
+          echo "=== Available targets ==="
+          cmake --build ${{ github.workspace }}/build --target help 2>&1 | grep -i blender | head -10 || echo "No blender target"
+          echo "=== ninja targets ==="
+          ninja -C ${{ github.workspace }}/build -t targets all 2>&1 | grep -i blender | head -10 || echo "No ninja blender target"
+
       - name: Cross-compile Blender
         run: |
-          cmake --build ${{ github.workspace }}/build --target blender -j$(nproc) 2>&1 | tee build.log
+          cmake --build ${{ github.workspace }}/build --target blender -j$(nproc) 2>&1
         timeout-minutes: 180
 
       - name: List build artifacts
         run: |
+          echo "=== Whole build/ ==="
+          find ${{ github.workspace }}/build -maxdepth 3 -type f -exec ls -lh {} \; 2>/dev/null | head -50
           echo "=== .so files ==="
           find ${{ github.workspace }}/build -name "*.so" -exec ls -lh {} \; 2>/dev/null || echo "No .so files"
+          echo "=== Executables ==="
+          find ${{ github.workspace }}/build -type f -executable -exec ls -lh {} \; 2>/dev/null | head -20
           echo "=== bin/ ==="
           ls -lh ${{ github.workspace }}/build/bin/ 2>/dev/null || echo "No bin/"
           echo "=== lib/ ==="
