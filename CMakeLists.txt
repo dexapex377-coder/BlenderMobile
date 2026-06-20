@@ -1154,7 +1154,7 @@ if(ANDROID)
   add_definitions(-D_LIBCPP_ENABLE_CXX17_REMOVED_FEATURES)
   # epoxy_is_gles was added in Epoxy 1.5.5; pre-compiled NDK libs are older.
   # On Android we are always GLES, so the inverse of epoxy_is_desktop_gl is correct.
-  add_definitions(-Depoxy_is_gles()=(!epoxy_is_desktop_gl()))
+  add_definitions(-include "${CMAKE_SOURCE_DIR}/intern/epoxy_android_stubs.h")
 endif()
 
 if(WITH_CPU_SIMD)
