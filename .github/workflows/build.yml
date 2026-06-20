@@ -339,17 +339,19 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
-      - name: Debug cmake targets
-        run: |
-          echo "=== Available targets ==="
-          cmake --build ${{ github.workspace }}/build --target help 2>&1 | grep -i blender | head -10 || echo "No blender target"
-          echo "=== ninja targets ==="
-          ninja -C ${{ github.workspace }}/build -t targets all 2>&1 | grep -i blender | head -10 || echo "No ninja blender target"
-
       - name: Cross-compile Blender
+        shell: bash -o pipefail {0}
         run: |
-          cmake --build ${{ github.workspace }}/build --target blender -j$(nproc) 2>&1
+          cmake --build ${{ github.workspace }}/build --target blender -j$(nproc) 2>&1 | tee /tmp/build.log
         timeout-minutes: 180
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build.log
+          retention-days: 7
 
       - name: List build artifacts
         run: |
