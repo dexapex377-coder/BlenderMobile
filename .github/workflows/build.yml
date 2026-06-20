@@ -404,7 +404,8 @@ jobs:
           path: |
             ${{ github.workspace }}/build/lib/*.so
             ${{ github.workspace }}/build/bin/libblender.so
-            ${{ github.workspace }}/build/source/blender/makesdna/**
+            ${{ github.workspace }}/build_host/source/blender/makesdna/intern/**
+            ${{ github.workspace }}/build/source/blender/makesdna/intern/**
             ${{ github.workspace }}/build/source/blender/makesrna/intern/**
           retention-days: 30
 
