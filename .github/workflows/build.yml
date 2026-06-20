@@ -357,6 +357,19 @@ jobs:
           cmake --build ${{ github.workspace }}/build --target blender -j$(nproc) 2>&1 | tee /tmp/build.log
         timeout-minutes: 180
 
+      - name: Strip libblender.so
+        run: |
+          NDK_DIR="${{ steps.setup-ndk.outputs.ndk-path }}"
+          STRIP="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+          SO="${{ github.workspace }}/build/lib/libblender.so"
+          if [ -f "$SO" ]; then
+            ls -lh "$SO"
+            "$STRIP" -s "$SO"
+            ls -lh "$SO"
+          fi
+          # Also strip any other .so in lib/
+          find "${{ github.workspace }}/build/lib" -name "*.so" -exec "$STRIP" -s {} \;
+
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
