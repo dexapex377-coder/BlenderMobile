@@ -250,7 +250,7 @@ jobs:
           BF_DNA_LIB="$GITROOT/build_host/lib/libbf_dna.a"
           BF_DNA_BLENLIB="$GITROOT/build_host/lib/libbf_dna_blenlib.a"
 
-          if [ ! -f "$MAKESRNA_LIB" ] || [ ! -f "$BF_DNA_LIB" ]; then
+          if [ ! -f "$MAKESRNA_LIB" ] || [ ! -f "$BF_DNA_LIB" ] || [ ! -f "$BF_DNA_BLENLIB" ]; then
             echo "ERROR: Static libraries not found"
             ls -la "$GITROOT/build_host/source/blender/makesdna/intern/"
             ls -la "$GITROOT/build_host/source/blender/makesrna/intern/"
@@ -258,9 +258,11 @@ jobs:
           fi
 
           g++ -o /tmp/makesrna \
-            "$MAKESRNA_LIB" \
+            -Wl,--start-group \
             "$BF_DNA_LIB" \
             "$BF_DNA_BLENLIB" \
+            "$MAKESRNA_LIB" \
+            -Wl,--end-group \
             -lm -lpthread
           echo "makesrna executable linked"
 
