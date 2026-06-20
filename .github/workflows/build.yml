@@ -170,7 +170,7 @@ jobs:
             -DLIB_DIR="${LIB_DIR}" \
             -DWITH_BLENDER=ON \
             -DWITH_PYTHON=OFF \
-            -DWITH_INTERNATIONAL=ON \
+            -DWITH_INTERNATIONAL=OFF \
             -DWITH_CODEC_FFMPEG=OFF \
             -DWITH_OPENAL=OFF \
             -DWITH_SDL=OFF \
@@ -314,7 +314,7 @@ jobs:
             -DMAKESRNA_EXECUTABLE="$HOST_TOOLS/makesrna" \
             -DWITH_BLENDER=ON \
             -DWITH_PYTHON=ON \
-            -DWITH_INTERNATIONAL=ON \
+            -DWITH_INTERNATIONAL=OFF \
             -DWITH_CODEC_FFMPEG=ON \
             -DWITH_OPENAL=ON \
             -DWITH_SDL=OFF \
