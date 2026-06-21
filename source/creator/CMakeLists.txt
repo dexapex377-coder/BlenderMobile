@@ -338,6 +338,8 @@ elseif(ANDROID)
   target_compile_options(blender PRIVATE -fvisibility=default)
   # Also apply to dependencies
   target_compile_options(bf_intern_guardedalloc PRIVATE -fvisibility=default)
+  # Android NDK logging for JNI glue
+  target_link_libraries(blender log)
 else()
   add_executable(blender ${EXETYPE} ${SRC})
   if(WIN32)
