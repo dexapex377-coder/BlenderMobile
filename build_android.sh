@@ -42,7 +42,7 @@ fi
 # --- Check LIB_DIR ---
 if [ ! -d "$LIB_DIR" ]; then
   echo "ERROR: LIB_DIR not found at $LIB_DIR"
-  echo "Clone the libs: git clone https://github.com/dshawshank/lib-android_arm64.git \"$LIB_DIR\""
+  echo "Clone the libs: git clone https://github.com/apexmiguel9-hub/lib-android_arm64.git \"$LIB_DIR\""
   exit 1
 fi
 

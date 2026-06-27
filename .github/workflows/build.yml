@@ -16,12 +16,32 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NDK_CACHE_KEY: ndk-Linux-r26d
-      LIBS_CACHE_KEY: libs-Linux-2024-01
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Restore precompiled libraries
+        uses: actions/cache/restore@v4
+        id: libs-restore
+        with:
+          path: ${{ github.workspace }}/../lib-android_arm64
+          key: libs-android-${{ runner.os }}
+
+      - name: Download precompiled libraries
+        if: steps.libs-restore.outputs.cache-hit != 'true'
+        run: |
+          echo "Cloning precompiled Android ARM64 libraries..."
+          git clone --depth 1 https://github.com/apexmiguel9-hub/lib-android_arm64.git \
+            ${{ github.workspace }}/../lib-android_arm64
+
+      - name: Save precompiled libraries cache
+        if: steps.libs-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/../lib-android_arm64
+          key: libs-android-${{ runner.os }}
 
       - name: Restore ccache
         uses: actions/cache/restore@v4
@@ -31,27 +51,6 @@ jobs:
           key: ccache-android-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
             ccache-android-${{ runner.os }}-
-
-      - name: Restore precompiled libraries
-        uses: actions/cache/restore@v4
-        id: libs-restore
-        with:
-          path: ${{ github.workspace }}/../lib-android_arm64
-          key: ${{ env.LIBS_CACHE_KEY }}
-
-      - name: Download precompiled libraries
-        if: steps.libs-restore.outputs.cache-hit != 'true'
-        run: |
-          echo "Cloning precompiled Android ARM64 libraries..."
-          git clone --depth 1 https://github.com/dshawshank/lib-android_arm64.git \
-            ${{ github.workspace }}/../lib-android_arm64
-
-      - name: Save precompiled libraries cache
-        if: steps.libs-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ github.workspace }}/../lib-android_arm64
-          key: ${{ env.LIBS_CACHE_KEY }}
 
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
