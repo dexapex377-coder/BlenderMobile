@@ -23,8 +23,15 @@
 #include "intern/GHOST_XrException.hh"
 
 void* g_NativeWindow=nullptr;
+bool g_HasAndroidApp=false;
 void setNativeWindow(void*nativeWindow){
     g_NativeWindow= nativeWindow;
+}
+void setAndroidApp(bool hasApp){
+    g_HasAndroidApp = hasApp;
+}
+bool hasAndroidApp(){
+    return g_HasAndroidApp;
 }
 void blenderWMInitReinit(){
 }

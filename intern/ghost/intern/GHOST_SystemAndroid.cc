@@ -14,6 +14,7 @@
 #include <android/native_window_jni.h>
 
 static CLG_LogRef LOG = {"Ghost.wm"};
+extern bool g_HasAndroidApp;
 
 GHOST_TKey processSpecialKey(short vKey, short /*scanCode*/) {
     // CLOG_ERROR(&LOG, "交互showHidenKeyboard 26");
@@ -1001,8 +1002,7 @@ GHOST_SystemAndroid::GHOST_SystemAndroid(void *nativeWindow) : GHOST_System() { 
     }
     m_start_time = uint64_t(tv.tv_sec) * 1000 + tv.tv_usec / 1000;
     m_nativeWindow = nativeWindow;
-    struct android_app *app = (struct android_app *) m_nativeWindow;
-    app->onInputEvent = engine_handle_input;
+    m_hasAndroidApp = g_HasAndroidApp;
 }
 
 #include <codecvt>
@@ -1026,34 +1026,34 @@ std::string cpp11_codepoint_to_utf8(char32_t cp) // C++11 Sandard
 
 bool GHOST_SystemAndroid::processEvents(bool waitForEvent) {
 
-//    CLOG_ERROR(&LOG,"GHOST_SystemAndroid::processEvents 1");
     bool hasEventHandled = false;
-    /* Process all the events waiting for us. */
+    if (!m_hasAndroidApp) {
+        if (generateWindowExposeEvents()) {
+            hasEventHandled = true;
+        }
+        while (!m_keyEventStatus.empty()) {
+            m_keyEventStatus.pop();
+        }
+        hasEventHandled |= this->m_eventManager->getNumEvents() > 0;
+        return hasEventHandled;
+    }
     struct android_app *app = (struct android_app *) m_nativeWindow;
     int ident;
     int events;
     struct android_poll_source *source;
-    // we loop until all events are read, then continue
-    // to draw the next frame of animation.
     while (true) {
         bool checkRet = (ident = ALooper_pollOnce(0, nullptr, &events,
                                                   (void **) &source)) >= 0;
-//        CLOG_ERROR(&LOG,"GHOST_SystemAndroid::processEvents 1 1 %d %d",checkRet,ident);
         if (!checkRet) {
             break;
         }
-//        CLOG_ERROR(&LOG,"GHOST_SystemAndroid::processEvents 2");
-
-        // Process this event.
         if (source != nullptr) {
             source->process(app, source);
             hasEventHandled = true;
         }
-        // If a sensor has data, process it now.
         if (ident == LOOPER_ID_USER) {
 
         }
-        // Check if we are exiting.
         if (app->destroyRequested != 0) {
             return hasEventHandled;
         }
@@ -1190,18 +1190,22 @@ GHOST_IWindow *GHOST_SystemAndroid::createWindow(const char *title,
                                                  const bool /*exclusive*/,
                                                  const bool /*is_dialog*/,
                                                  const GHOST_IWindow *parentWindow) {
-    struct android_app *app = (struct android_app *) m_nativeWindow;
-    //  修改 如果已经创建了一个windows，则表示新创建的是一个对话框窗体 重要修改
-    ANativeWindow *aNativeWindow = app->window;
-    if (m_windowManager->getWindows().size() >= 1) {
-        app->showWindow(app, left, top, width, height, shape_type, "");
-        for (int i = 0; i < 10000; i++) {
-            if (app->windowWindow) {
-                break;
+    ANativeWindow *aNativeWindow = nullptr;
+    if (m_hasAndroidApp) {
+        struct android_app *app = (struct android_app *) m_nativeWindow;
+        aNativeWindow = app->window;
+        if (m_windowManager->getWindows().size() >= 1) {
+            app->showWindow(app, left, top, width, height, shape_type, "");
+            for (int i = 0; i < 10000; i++) {
+                if (app->windowWindow) {
+                    break;
+                }
+                usleep(1000);
             }
-            usleep(1000);
+            aNativeWindow = app->windowWindow;
         }
-        aNativeWindow = app->windowWindow;
+    } else {
+        aNativeWindow = (ANativeWindow *)m_nativeWindow;
     }
     GHOST_WindowAndroid *window = new GHOST_WindowAndroid(shape_type, this, title,
                                                           left,
@@ -1214,7 +1218,10 @@ GHOST_IWindow *GHOST_SystemAndroid::createWindow(const char *title,
                                                           ((gpuSettings.flags &
                                                                   GHOST_glStereoVisual) !=
                                                            0), aNativeWindow);
-    app->windowWindow = nullptr;
+    if (m_hasAndroidApp) {
+        struct android_app *app = (struct android_app *) m_nativeWindow;
+        app->windowWindow = nullptr;
+    }
     if (window->getValid()) {
         /* Store the pointer to the window */
         m_windowManager->addWindow(window);
@@ -1231,28 +1238,24 @@ void GHOST_SystemAndroid::getAllDisplayDimensions(uint32_t &width, uint32_t &hei
 }
 
 void
-GHOST_SystemAndroid::getMainDisplayDimensions(uint32_t &width, uint32_t &height) const { /* nop */
-    //  修改 平板尺寸
-//    width=2000;
-//    height=1200;
-    //        width=2608;
-    //        height=1220;
-//    width=3200;
-//    height=2136;
-
-    struct android_app *app = (struct android_app *) m_nativeWindow;
-    width = app->contentRect.right;
-    height = app->contentRect.bottom;
+GHOST_SystemAndroid::getMainDisplayDimensions(uint32_t &width, uint32_t &height) const {
+    if (m_hasAndroidApp) {
+        struct android_app *app = (struct android_app *) m_nativeWindow;
+        width = app->contentRect.right;
+        height = app->contentRect.bottom;
+    } else {
+        width = 2000;
+        height = 1200;
+    }
 }
 
 GHOST_TSuccess GHOST_SystemAndroid::setCursorPosition(int32_t x, int32_t y) {
-    std::string strInfo ="move setCursorPosition" + std::to_string(x) + " " + std::to_string(y);
-//     CLOG_ERROR(&LOG, "交互 1 %s", strInfo.c_str());
-    GHOST_WindowAndroid *window = window = (GHOST_WindowAndroid *) getWindowManager()->getActiveWindow();
-    struct android_app *app = (struct android_app *) m_nativeWindow;
-    if ((app!= nullptr)&&(window!= nullptr)){
-//        CLOG_ERROR(&LOG, "交互 2 %s", strInfo.c_str());
-        app->setCursorPosition(x,y);
+    GHOST_WindowAndroid *window = (GHOST_WindowAndroid *) getWindowManager()->getActiveWindow();
+    if (m_hasAndroidApp) {
+        struct android_app *app = (struct android_app *) m_nativeWindow;
+        if (window != nullptr) {
+            app->setCursorPosition(x, y);
+        }
     }
 //    GHOST_TabletData td;
 //    pushEvent(new GHOST_EventCursor(getMilliSeconds(), GHOST_kEventCursorMove, window, x, y,td));
@@ -1422,7 +1425,9 @@ void GHOST_SystemAndroid::inputKey(int p_physical_keycode,
 }
 
 void GHOST_SystemAndroid::wmInitReInit() {
-    // CLOG_ERROR(&LOG, "交互wmInitReInit 1");
+    if (!m_hasAndroidApp) {
+        return;
+    }
     uint32_t width, height;
     getMainDisplayDimensions(width, height);
     GHOST_WindowAndroid *windowNewActivate = nullptr;
@@ -1430,26 +1435,17 @@ void GHOST_SystemAndroid::wmInitReInit() {
     auto windows = getWindowManager()->getWindows();
     std::vector<GHOST_WindowAndroid *> windowsToRemove;
     std::vector<GHOST_WindowAndroid *> windowsToAdd;
-    // CLOG_ERROR(&LOG, "交互wmInitReInit 2");
     for (auto window:windows) {
-        // CLOG_ERROR(&LOG, "交互wmInitReInit 3");
         GHOST_WindowAndroid *nullWindow = (GHOST_WindowAndroid *) window;
-        // CLOG_ERROR(&LOG, "交互wmInitReInit 4 %d %d %d", nullWindow->m_shpeType, width, height);
         if (getWindowManager()->getActiveWindow() == window) {
-            // CLOG_ERROR(&LOG, "交互wmInitReInit 5");
             windowNewActivate = nullWindow;
         }
-        // CLOG_ERROR(&LOG, "交互wmInitReInit 6");
         windowsToAdd.push_back(nullWindow);
         windowsToRemove.push_back(nullWindow);
-        // CLOG_ERROR(&LOG, "交互wmInitReInit 7");
     }
-    // CLOG_ERROR(&LOG, "交互wmInitReInit 8");
     for (auto window:windowsToRemove) {
-        // CLOG_ERROR(&LOG, "交互wmInitReInit 9");
         getWindowManager()->removeWindow(window);
     }
-    // CLOG_ERROR(&LOG, "交互wmInitReInit 10");
     for (auto *window:windowsToAdd) {
         struct android_app *app = (struct android_app *) m_nativeWindow;
         GHOST_WindowAndroid *windowNew = new GHOST_WindowAndroid(window->m_shpeType,
@@ -1561,40 +1557,34 @@ void GHOST_SystemAndroid::setValue(int values[], int num) {
 }
 
 GHOST_TSuccess GHOST_SystemAndroid::getModifierKeys(GHOST_ModifierKeys &keys) const {
-    /* `GetAsyncKeyState` returns the current interrupt-level state of the hardware, which is needed
-  * when passing key states to a newly-activated window - #40059. Alternative `GetKeyState` only
-  * returns the state as processed by the thread's message queue. */
+    if (m_hasAndroidApp) {
+        struct android_app *app = (struct android_app *) m_nativeWindow;
+        bool down = app->GetAsyncKeyState(0);
+        keys.set(GHOST_kModifierKeyLeftShift, down || isShiftPressed);
+        down = false;
+        keys.set(GHOST_kModifierKeyRightShift, down);
 
-    struct android_app *app = (struct android_app *) m_nativeWindow;
-    bool down = app->GetAsyncKeyState(0);
-    keys.set(GHOST_kModifierKeyLeftShift, down || isShiftPressed);
-    down = false;//(::GetAsyncKeyState(VK_RSHIFT)) != 0;
-    keys.set(GHOST_kModifierKeyRightShift, down);
-    bool down1 = down;
+        down = app->GetAsyncKeyState(1);
+        keys.set(GHOST_kModifierKeyLeftAlt, down || isAltPressed);
+        down = false;
+        keys.set(GHOST_kModifierKeyRightAlt, down);
 
-    down = app->GetAsyncKeyState(1);
-    keys.set(GHOST_kModifierKeyLeftAlt, down || isAltPressed);
-    down = false;//(::GetAsyncKeyState(VK_RMENU)) != 0;
-    keys.set(GHOST_kModifierKeyRightAlt, down);
-    bool down2 = down;
+        down = app->GetAsyncKeyState(2);
+        keys.set(GHOST_kModifierKeyLeftControl, down || isCtrlPressed);
+        down = false;
+        keys.set(GHOST_kModifierKeyRightControl, down);
+    }
 
-    down = app->GetAsyncKeyState(2);
-    keys.set(GHOST_kModifierKeyLeftControl, down || isCtrlPressed);
-    down = false;//(::GetAsyncKeyState(VK_RCONTROL)) != 0;
-    keys.set(GHOST_kModifierKeyRightControl, down);
-    bool down3 = down;
-
-    down = false;//GetAsyncKeyState(VK_LWIN);
-    keys.set(GHOST_kModifierKeyLeftOS, down);
-    down = false;//(::GetAsyncKeyState(VK_RWIN)) != 0;
-    keys.set(GHOST_kModifierKeyRightOS, down);
-
-    // CLOG_ERROR(&LOG, "交互GHOST_SystemAndroid getModifierKeys %d %d %d", down1, down2, down3);
+    keys.set(GHOST_kModifierKeyLeftOS, false);
+    keys.set(GHOST_kModifierKeyRightOS, false);
 
     return GHOST_kSuccess;
 }
 
 void GHOST_SystemAndroid::closeWindow() {
+    if (!m_hasAndroidApp) {
+        return;
+    }
     struct android_app *app = (struct android_app *) m_nativeWindow;
     GHOST_WindowAndroid *window = (GHOST_WindowAndroid *) getWindowManager()->getActiveWindow();
     if (window->m_nativeWindow != app->window) {
@@ -1645,7 +1635,9 @@ void GHOST_SystemAndroid::showHidenKeyboard(bool show,
                                             int p_max_input_length,
                                             int p_cursor_start,
                                             int p_cursor_end) {
-    // CLOG_ERROR(&LOG, "交互showHidenKeyboard 4 1");
+    if (!m_hasAndroidApp) {
+        return;
+    }
     struct android_app *app = (struct android_app *) m_nativeWindow;
     app->showWindow(app, p_type, p_max_input_length, p_cursor_start, p_cursor_end,
                     show ? 3000 : 4000, p_existing_text);
@@ -1974,16 +1966,22 @@ inline int conv_utf_8_to_16(const char *in8, wchar_t *out16, size_t size16)
 
 
 char *GHOST_SystemAndroid::getClipboard(bool selection) const{
-    struct android_app *app = (struct android_app *) m_nativeWindow;
-    std::wstring clipBoardData=app->getClipboard(selection);
-    if (clipBoardData.empty()){
-        return nullptr;
+    if (m_hasAndroidApp) {
+        struct android_app *app = (struct android_app *) m_nativeWindow;
+        std::wstring clipBoardData=app->getClipboard(selection);
+        if (clipBoardData.empty()){
+            return nullptr;
+        }
+        char *temp_buff = alloc_utf_8_from_16(clipBoardData.c_str(), 0);
+        return temp_buff;
     }
-    char *temp_buff = alloc_utf_8_from_16(clipBoardData.c_str(), 0);
-    return temp_buff;
+    return nullptr;
 }
 
 void GHOST_SystemAndroid::putClipboard(const char * buffer, bool selection) const{
+    if (!m_hasAndroidApp) {
+        return;
+    }
     if (selection || !buffer) {
         return;
     } /* For copying the selection, used on X11. */

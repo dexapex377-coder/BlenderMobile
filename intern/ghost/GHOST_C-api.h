@@ -23,6 +23,8 @@ extern "C" {
  extern void*g_NativeWindow;
 typedef bool (*GHOST_EventCallbackProcPtr)(GHOST_EventHandle event, GHOST_TUserDataPtr userdata);
 extern void setNativeWindow(void*nativeWindow);
+extern void setAndroidApp(bool hasApp);
+extern bool hasAndroidApp();
 extern void blenderSetValue(int values[],int num);
 extern void blenderSetValueOn(int values[],int num);
 extern void blenderSetValueOff(int values[],int num);

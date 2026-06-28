@@ -64,6 +64,7 @@ static int engine_init_display(struct android_app *app) {
     auto*userData=new appUserData;
     app->userData=userData;\
     initialLib((void*)app);
+    setAndroidApp(true);
     //  设置系统参数 注册表
 
     BLI_setenv("XDG_CACHE_HOME", strHomePath);

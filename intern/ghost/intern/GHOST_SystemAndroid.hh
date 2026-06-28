@@ -33,6 +33,7 @@ class GHOST_SystemAndroid : public GHOST_System {
 private:
     void*m_nativeWindow=nullptr;
 public:
+    bool m_hasAndroidApp = false;
     int32_t m_x=-1;
     int32_t m_y=-1;
     int32_t m_lastDownx=-1;
